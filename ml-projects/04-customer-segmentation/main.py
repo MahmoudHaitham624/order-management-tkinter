@@ -1,97 +1,102 @@
-"""
-Project 4: Customer Segmentation (K-Means Clustering)
+# Project 4: Customer Segmentation
+# We ask the computer to split shop customers into groups of similar people.
+# We never tell it what the groups are. It must find them by itself.
+# This is called "unsupervised learning".
 
-Goal: group shop customers into segments by their age, income and spending,
-WITHOUT any labels telling us the "right" groups.
-"""
-from pathlib import Path
-
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sklearn.cluster import KMeans
-from sklearn.metrics import silhouette_score
+import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
-
-OUTPUT_DIR = Path(__file__).parent / "outputs"
-OUTPUT_DIR.mkdir(exist_ok=True)
+from sklearn.cluster import KMeans
 
 
-def make_customers(seed=0):
-    """Generate customers from 4 hidden groups (the model never sees the group)."""
-    rng = np.random.default_rng(seed)
-    groups = [
-        # (count, age mean, income mean (k$), spending score mean)
-        (60, 25, 30, 75),   # young, low income, big spenders
-        (60, 45, 85, 80),   # wealthy, big spenders
-        (60, 50, 90, 20),   # wealthy, careful savers
-        (70, 35, 50, 45),   # average customers
-    ]
-    rows = []
-    for count, age, income, score in groups:
-        rows.append(np.column_stack([
-            rng.normal(age, 5, count),
-            rng.normal(income, 8, count),
-            rng.normal(score, 8, count),
-        ]))
-    data = np.vstack(rows)
-    df = pd.DataFrame(data, columns=["age", "annual_income_k", "spending_score"])
-    df["spending_score"] = df["spending_score"].clip(1, 100)
-    return df.round(0)
+# ---------- Step 1: Make some customer data ----------
+# We secretly create 4 kinds of customers, 60 of each.
+# np.random.normal(average, spread, how_many) makes numbers around an average.
+np.random.seed(0)
+
+# Group A: young, low income, spend a lot
+age_a = np.random.normal(25, 5, 60)
+income_a = np.random.normal(30, 8, 60)
+spending_a = np.random.normal(75, 8, 60)
+
+# Group B: middle-aged, high income, spend a lot
+age_b = np.random.normal(45, 5, 60)
+income_b = np.random.normal(85, 8, 60)
+spending_b = np.random.normal(80, 8, 60)
+
+# Group C: older, high income, spend very little
+age_c = np.random.normal(50, 5, 60)
+income_c = np.random.normal(90, 8, 60)
+spending_c = np.random.normal(20, 8, 60)
+
+# Group D: average in everything
+age_d = np.random.normal(35, 5, 60)
+income_d = np.random.normal(50, 8, 60)
+spending_d = np.random.normal(45, 8, 60)
+
+# Join the 4 groups together into one table of 240 customers
+customers = pd.DataFrame({
+    "age": np.concatenate([age_a, age_b, age_c, age_d]),
+    "income": np.concatenate([income_a, income_b, income_c, income_d]),
+    "spending": np.concatenate([spending_a, spending_b, spending_c, spending_d]),
+})
+print("The first 5 customers:")
+print(customers.head())
+print()
 
 
-def main():
-    df = make_customers()
-    print(df.describe().round(1), "\n")
-
-    # 1. Scale features so that no column dominates just because its numbers are bigger
-    X = StandardScaler().fit_transform(df)
-
-    # 2. Elbow method + silhouette score to choose the number of clusters
-    k_range = range(2, 9)
-    inertias, silhouettes = [], []
-    for k in k_range:
-        km = KMeans(n_clusters=k, n_init=10, random_state=42).fit(X)
-        inertias.append(km.inertia_)
-        silhouettes.append(silhouette_score(X, km.labels_))
-        print(f"k={k}: inertia={km.inertia_:7.1f}  silhouette={silhouettes[-1]:.3f}")
-    best_k = k_range[int(np.argmax(silhouettes))]
-    print(f"\nBest k by silhouette score: {best_k}\n")
-
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
-    ax1.plot(list(k_range), inertias, marker="o")
-    ax1.set(title="Elbow method", xlabel="k", ylabel="Inertia (lower = tighter)")
-    ax2.plot(list(k_range), silhouettes, marker="o", color="green")
-    ax2.set(title="Silhouette score", xlabel="k", ylabel="Score (higher = better)")
-    fig.tight_layout()
-    fig.savefig(OUTPUT_DIR / "choose_k.png")
-
-    # 3. Final model
-    kmeans = KMeans(n_clusters=best_k, n_init=10, random_state=42)
-    df["segment"] = kmeans.fit_predict(X)
-
-    # 4. Describe each segment in business terms
-    profile = df.groupby("segment").agg(
-        customers=("age", "size"),
-        avg_age=("age", "mean"),
-        avg_income_k=("annual_income_k", "mean"),
-        avg_spending=("spending_score", "mean"),
-    ).round(1)
-    print("Segment profiles:\n", profile, "\n")
-
-    # 5. Visualise
-    plt.figure(figsize=(7, 5))
-    scatter = plt.scatter(df["annual_income_k"], df["spending_score"],
-                          c=df["segment"], cmap="viridis", alpha=0.7)
-    plt.xlabel("Annual income (k$)")
-    plt.ylabel("Spending score (1-100)")
-    plt.title("Customer segments")
-    plt.legend(*scatter.legend_elements(), title="Segment")
-    plt.savefig(OUTPUT_DIR / "segments.png")
-    print(f"Charts saved in {OUTPUT_DIR}")
+# ---------- Step 2: Scale the data ----------
+# Age, income and spending use different units and ranges.
+# Scaling puts every column on the same scale, so none of them counts more
+# just because its numbers are bigger.
+scaler = StandardScaler()
+X = scaler.fit_transform(customers)
 
 
-if __name__ == "__main__":
-    main()
+# ---------- Step 3: Find a good number of groups (the "elbow method") ----------
+# For each number of groups, "inertia" says how spread out each group is.
+# Smaller is better, but it always shrinks as we add groups.
+# We look for the point where it stops dropping a lot: the "elbow".
+group_counts = [1, 2, 3, 4, 5, 6, 7, 8]
+inertias = []
+
+for k in group_counts:
+    test_model = KMeans(n_clusters=k, n_init=10, random_state=42)
+    test_model.fit(X)
+    inertias.append(test_model.inertia_)
+    print("Groups:", k, " inertia:", round(test_model.inertia_, 1))
+
+plt.plot(group_counts, inertias, marker="o")
+plt.xlabel("Number of groups")
+plt.ylabel("Inertia (lower is tighter)")
+plt.title("Elbow method: look for the bend")
+plt.show()
+
+
+# ---------- Step 4: Create the final model with 4 groups ----------
+# The elbow in the chart is at 4, so we use 4 groups.
+model = KMeans(n_clusters=4, n_init=10, random_state=42)
+model.fit(X)
+
+# Add a new column to the table that says which group each customer is in
+customers["group"] = model.labels_
+
+
+# ---------- Step 5: Describe each group ----------
+# The average age, income and spending for each group
+print()
+print("Average customer in each group:")
+print(customers.groupby("group").mean().round(1))
+print()
+print("Number of customers in each group:")
+print(customers["group"].value_counts())
+
+
+# ---------- Step 6: Draw the groups ----------
+# Each colour is one group the computer found.
+plt.scatter(customers["income"], customers["spending"], c=customers["group"])
+plt.xlabel("Income (thousands of $)")
+plt.ylabel("Spending score")
+plt.title("Customer groups found by K-Means")
+plt.show()

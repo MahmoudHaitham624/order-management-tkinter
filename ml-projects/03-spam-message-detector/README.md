@@ -1,32 +1,42 @@
 # Project 3: Spam Message Detector
 
-**Type:** Text classification (Natural Language Processing)
-**Algorithm:** Multinomial Naive Bayes with TF-IDF features
+**The question:** can the computer read a message and tell if it is spam?
 
-## What you'll learn
-- How to turn **text into numbers**:
-  - **Bag-of-words**: count how often each word appears
-  - **TF-IDF**: give more weight to words that are rare across messages
-- **Stop words**: removing common words like "the" and "is"
-- **Pipelines**: chaining preprocessing and model into one object
-- **Precision vs recall**: is it worse to mark a real message as spam, or to let spam through?
-- How to inspect which words the model finds most "spammy"
+**Type:** Text classification
+**Model:** Naive Bayes
 
-## The data
-40 example messages (20 spam, 20 ham) are written directly in `main.py`, so
-you can read and edit every one.
-For a bigger real dataset, look up the *SMS Spam Collection* on Kaggle or UCI
-(about 5,500 messages).
+## The big new idea: words must become numbers
+Models only understand numbers. `CountVectorizer` builds a list of all the
+words it has seen, then turns each message into counts:
+
+```
+Words:            call  free  now  prize
+"free prize now"   0     1     1     1
+"call me now"      1     0     1     0
+```
+
+**Naive Bayes** then learns which words appear more often in spam ("free",
+"win", "claim") and which appear more often in normal messages.
+
+## How the code works, step by step
+
+| Step | What happens |
+|------|--------------|
+| 1 | 20 spam and 20 normal messages are written in the code, plus a matching list of labels. |
+| 2 | Split into training and testing messages. |
+| 3 | Turn the words into numbers. `fit_transform` learns the words from the training messages; `transform` only counts them in the test messages. |
+| 4 | Train the Naive Bayes model. |
+| 5 | Check accuracy on the test messages. |
+| 6 | Try 4 brand-new messages. Remember to turn them into numbers first! |
+| 7 | A confusion matrix of correct vs wrong guesses. |
 
 ## Run it
 ```bash
 python main.py
 ```
-Output: a bag-of-words demo, metrics, the top spam words, predictions for new
-messages, and `outputs/confusion_matrix.png`.
 
 ## Try it yourself
-1. Add 10 more messages of your own to `SPAM` and `HAM`. Does accuracy change?
-2. Replace `TfidfVectorizer` with `CountVectorizer`. Which works better?
-3. Add `ngram_range=(1, 2)` to the vectorizer so it also learns word pairs.
-4. Download the real SMS Spam Collection, load it with `pd.read_csv`, and retrain.
+1. Add your own messages to `new_messages` in Step 6. Can you trick the model?
+2. Add 5 more messages to each list. Does accuracy change?
+3. Replace `CountVectorizer` with `TfidfVectorizer` (import it from the same place).
+   It gives less weight to very common words.

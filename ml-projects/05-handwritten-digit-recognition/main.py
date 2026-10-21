@@ -1,79 +1,73 @@
-"""
-Project 5: Handwritten Digit Recognition (Logistic Regression vs SVM)
+# Project 5: Handwritten Digit Recognition
+# We teach the computer to read handwritten numbers from 0 to 9.
 
-Goal: recognise handwritten digits 0-9 from tiny 8x8 pixel images.
-"""
-from pathlib import Path
-
-import matplotlib
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import numpy as np
 from sklearn.datasets import load_digits
+from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import ConfusionMatrixDisplay, accuracy_score
-from sklearn.model_selection import cross_val_score, train_test_split
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
-
-OUTPUT_DIR = Path(__file__).parent / "outputs"
-OUTPUT_DIR.mkdir(exist_ok=True)
+from sklearn.metrics import accuracy_score, ConfusionMatrixDisplay
 
 
-def main():
-    # 1. Load 1,797 images of 8x8 pixels (each pixel is 0-16)
-    digits = load_digits()
-    print(f"Images: {digits.images.shape}, flattened features: {digits.data.shape}")
-    print("The first image as numbers:\n", digits.images[0].astype(int), "\n")
+# ---------- Step 1: Load the images ----------
+# 1,797 small pictures of handwritten digits. Each picture is 8 x 8 pixels.
+# Each pixel is a number from 0 (white) to 16 (black).
+digits = load_digits()
 
-    # Show some sample images
-    fig, axes = plt.subplots(2, 5, figsize=(8, 4))
-    for ax, img, label in zip(axes.ravel(), digits.images, digits.target):
-        ax.imshow(img, cmap="gray_r")
-        ax.set_title(f"Label: {label}")
-        ax.axis("off")
-    fig.savefig(OUTPUT_DIR / "sample_digits.png")
+print("Number of pictures:", len(digits.images))
+print()
+print("This is what the first picture looks like as numbers:")
+print(digits.images[0])
+print("It is the digit:", digits.target[0])
+print()
 
-    # 2. Split
-    X_train, X_test, y_train, y_test = train_test_split(
-        digits.data, digits.target, test_size=0.2, random_state=42,
-        stratify=digits.target,
-    )
-
-    # 3. Compare two models with 5-fold cross-validation
-    models = {
-        "Logistic Regression": make_pipeline(
-            StandardScaler(), LogisticRegression(max_iter=2000)),
-        "SVM (RBF kernel)": make_pipeline(StandardScaler(), SVC(gamma="scale")),
-    }
-    for name, model in models.items():
-        cv = cross_val_score(model, X_train, y_train, cv=5)
-        print(f"{name:20s} cross-val accuracy: {cv.mean():.3f} (+/- {cv.std():.3f})")
-
-    # 4. Train the best model and test it
-    best = models["SVM (RBF kernel)"].fit(X_train, y_train)
-    preds = best.predict(X_test)
-    print(f"\nSVM test accuracy: {accuracy_score(y_test, preds):.3f}")
-
-    ConfusionMatrixDisplay.from_predictions(y_test, preds, cmap="Greens")
-    plt.title("Digits - confusion matrix")
-    plt.savefig(OUTPUT_DIR / "confusion_matrix.png")
-
-    # 5. Look at the mistakes: that is where you learn the most
-    wrong = np.where(preds != y_test)[0]
-    print(f"Misclassified {len(wrong)} of {len(y_test)} test images")
-    if len(wrong):
-        n = min(len(wrong), 10)
-        fig, axes = plt.subplots(1, n, figsize=(1.6 * n, 2.2), squeeze=False)
-        for ax, i in zip(axes[0], wrong[:n]):
-            ax.imshow(X_test[i].reshape(8, 8), cmap="gray_r")
-            ax.set_title(f"true {y_test[i]}\npred {preds[i]}", fontsize=9)
-            ax.axis("off")
-        fig.tight_layout()
-        fig.savefig(OUTPUT_DIR / "mistakes.png")
-    print(f"Charts saved in {OUTPUT_DIR}")
+# Show the first picture as an image
+plt.imshow(digits.images[0], cmap="gray_r")
+plt.title("This is a " + str(digits.target[0]))
+plt.show()
 
 
-if __name__ == "__main__":
-    main()
+# ---------- Step 2: Get the inputs and the answers ----------
+# digits.data is each 8 x 8 picture flattened into one row of 64 numbers.
+X = digits.data
+y = digits.target  # the real digit (0 to 9) for each picture
+
+
+# ---------- Step 3: Split into training data and testing data ----------
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+
+# ---------- Step 4: Model 1, Logistic Regression ----------
+# max_iter gives the model enough steps to finish learning
+model1 = LogisticRegression(max_iter=5000)
+model1.fit(X_train, y_train)
+predictions1 = model1.predict(X_test)
+print("Logistic Regression accuracy:", round(accuracy_score(y_test, predictions1), 3))
+
+
+# ---------- Step 5: Model 2, Support Vector Machine (SVM) ----------
+model2 = SVC()
+model2.fit(X_train, y_train)
+predictions2 = model2.predict(X_test)
+print("SVM accuracy:", round(accuracy_score(y_test, predictions2), 3))
+print()
+
+
+# ---------- Step 6: Look at the mistakes ----------
+# Go through every test picture and print the ones the SVM got wrong
+print("Pictures the SVM got wrong:")
+mistakes = 0
+for i in range(len(y_test)):
+    if predictions2[i] != y_test[i]:
+        print("  Real digit:", y_test[i], " SVM guessed:", predictions2[i])
+        mistakes = mistakes + 1
+print("Total mistakes:", mistakes, "out of", len(y_test))
+
+
+# ---------- Step 7: Draw a confusion matrix ----------
+# This shows which digits get confused with each other
+ConfusionMatrixDisplay.from_predictions(y_test, predictions2)
+plt.title("SVM: real digit vs guessed digit")
+plt.show()

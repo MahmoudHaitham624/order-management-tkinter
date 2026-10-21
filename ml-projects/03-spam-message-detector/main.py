@@ -1,25 +1,15 @@
-"""
-Project 3: Spam Message Detector (Naive Bayes + TF-IDF)
+# Project 3: Spam Message Detector
+# We teach the computer to tell spam messages apart from normal messages.
 
-Goal: decide whether a text message is spam or a normal message ("ham").
-"""
-from pathlib import Path
-
-import matplotlib
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import pandas as pd
-from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
-from sklearn.metrics import (ConfusionMatrixDisplay, accuracy_score,
-                             classification_report)
 from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.pipeline import make_pipeline
+from sklearn.metrics import accuracy_score, ConfusionMatrixDisplay
 
-OUTPUT_DIR = Path(__file__).parent / "outputs"
-OUTPUT_DIR.mkdir(exist_ok=True)
 
-SPAM = [
+# ---------- Step 1: Write some example messages ----------
+spam_messages = [
     "WINNER! You have won a free iPhone, click here to claim now",
     "Congratulations! You won $1000 cash prize, call now",
     "URGENT: your account is locked, verify your password at this link",
@@ -31,7 +21,6 @@ SPAM = [
     "Claim your prize now before it expires, reply YES",
     "Exclusive deal just for you, 90% off, order now",
     "Your number won the lottery, send your bank details",
-    "Hot singles in your area, click to chat free",
     "Act now! Lowest price on meds, free shipping",
     "You are a lucky winner, call this number to collect your reward",
     "Final notice: claim your free vacation package today",
@@ -40,9 +29,10 @@ SPAM = [
     "Your loan is pre-approved, click to get cash instantly",
     "Win a brand new car, enter the free draw now",
     "Urgent prize waiting for you, call now to claim cash",
+    "You won a free trip, click the link to claim",
 ]
 
-HAM = [
+normal_messages = [
     "Hey, are we still meeting for lunch tomorrow?",
     "Can you send me the notes from today's lecture?",
     "I'll be home late tonight, don't wait for dinner",
@@ -65,66 +55,63 @@ HAM = [
     "Dinner was great, let's do it again soon",
 ]
 
-
-def main():
-    # 1. Build the dataset
-    df = pd.DataFrame({
-        "text": SPAM + HAM,
-        "label": ["spam"] * len(SPAM) + ["ham"] * len(HAM),
-    })
-    print(df.sample(5, random_state=1), "\n")
-
-    # 2. See how text becomes numbers (bag-of-words)
-    demo = CountVectorizer()
-    counts = demo.fit_transform(["free prize now", "call me now"])
-    print("Bag-of-words demo")
-    print("  vocabulary:", demo.get_feature_names_out())
-    print("  vectors:\n", counts.toarray(), "\n")
-
-    # 3. Split data
-    X_train, X_test, y_train, y_test = train_test_split(
-        df["text"], df["label"], test_size=0.3, random_state=42,
-        stratify=df["label"],
-    )
-
-    # 4. A pipeline chains "text -> TF-IDF numbers -> Naive Bayes"
-    model = make_pipeline(
-        TfidfVectorizer(lowercase=True, stop_words="english"),
-        MultinomialNB(),
-    )
-    model.fit(X_train, y_train)
-
-    # 5. Evaluate
-    preds = model.predict(X_test)
-    print(f"Accuracy: {accuracy_score(y_test, preds):.3f}")
-    print(classification_report(y_test, preds))
-
-    ConfusionMatrixDisplay.from_predictions(y_test, preds, cmap="Oranges")
-    plt.title("Spam detector - confusion matrix")
-    plt.savefig(OUTPUT_DIR / "confusion_matrix.png")
-
-    # 6. Which words scream "spam"?
-    vectorizer = model.named_steps["tfidfvectorizer"]
-    nb = model.named_steps["multinomialnb"]
-    spam_idx = list(nb.classes_).index("spam")
-    ham_idx = list(nb.classes_).index("ham")
-    spamminess = nb.feature_log_prob_[spam_idx] - nb.feature_log_prob_[ham_idx]
-    words = vectorizer.get_feature_names_out()
-    top = sorted(zip(spamminess, words), reverse=True)[:10]
-    print("Top 10 spam words:", [w for _, w in top], "\n")
-
-    # 7. Try your own messages
-    tests = [
-        "Click now to claim your free cash prize",
-        "Are you free for coffee after class?",
-        "You won a gift card, reply to collect",
-        "Please send me the report by Friday",
-    ]
-    for msg, label, proba in zip(tests, model.predict(tests),
-                                 model.predict_proba(tests)):
-        print(f"[{label.upper():4s} {max(proba):.0%}] {msg}")
-    print(f"\nChart saved in {OUTPUT_DIR}")
+# Put all messages in one list, and make a matching list of labels.
+# ["spam"] * 20 makes a list with the word "spam" written 20 times.
+messages = spam_messages + normal_messages
+labels = ["spam"] * len(spam_messages) + ["normal"] * len(normal_messages)
+print("Total messages:", len(messages))
+print()
 
 
-if __name__ == "__main__":
-    main()
+# ---------- Step 2: Split into training data and testing data ----------
+X_train, X_test, y_train, y_test = train_test_split(
+    messages, labels, test_size=0.3, random_state=42, stratify=labels
+)
+
+
+# ---------- Step 3: Turn words into numbers ----------
+# A model can only work with numbers, not words.
+# CountVectorizer counts how many times each word appears in a message.
+vectorizer = CountVectorizer()
+
+# Learn the list of words from the TRAINING messages, then count them
+X_train_numbers = vectorizer.fit_transform(X_train)
+
+# Count the same words in the TEST messages (no new learning here)
+X_test_numbers = vectorizer.transform(X_test)
+
+print("The model knows", len(vectorizer.get_feature_names_out()), "different words")
+print()
+
+
+# ---------- Step 4: Create the model and train it ----------
+# Naive Bayes learns how often each word shows up in spam vs normal messages.
+# Words like "free", "win" and "claim" will point strongly to spam.
+model = MultinomialNB()
+model.fit(X_train_numbers, y_train)
+
+
+# ---------- Step 5: Test the model ----------
+predictions = model.predict(X_test_numbers)
+print("Accuracy:", accuracy_score(y_test, predictions))
+print()
+
+
+# ---------- Step 6: Try it on brand-new messages ----------
+new_messages = [
+    "Click now to claim your free cash prize",
+    "Are you free for coffee after class?",
+    "You won a gift card, reply to collect",
+    "Please send me the report by Friday",
+]
+new_numbers = vectorizer.transform(new_messages)  # words -> numbers again
+new_predictions = model.predict(new_numbers)
+
+for i in range(len(new_messages)):
+    print(new_predictions[i], "-->", new_messages[i])
+
+
+# ---------- Step 7: Draw a confusion matrix ----------
+ConfusionMatrixDisplay.from_predictions(y_test, predictions)
+plt.title("Spam detector: correct vs wrong guesses")
+plt.show()

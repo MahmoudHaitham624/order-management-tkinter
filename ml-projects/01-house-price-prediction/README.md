@@ -1,31 +1,38 @@
 # Project 1: House Price Prediction
 
-**Type:** Regression (predicting a number)
-**Algorithm:** Linear Regression
+**The question:** if I know a house's size, bedrooms, age and distance from
+the city, can the computer guess its price?
 
-## What you'll learn
-- The standard ML workflow: **load → split → train → evaluate → predict**
-- Why we keep a **test set** the model never sees during training
-- How to read regression metrics:
-  - **MAE**: on average, how many dollars off we are
-  - **RMSE**: like MAE, but big mistakes count extra
-  - **R²**: share of the price variation the model explains (1.0 is perfect)
-- How to read **coefficients**: how much the price changes per extra m², bedroom, and so on
+**Type:** Regression (the answer is a number)
+**Model:** Linear Regression
 
-## The data
-500 generated houses with `size_m2`, `bedrooms`, `age_years`, `distance_km`,
-and `price`. The data comes from a known formula plus noise, so you can check
-whether the model recovers the true rule (+1,500 per m², +10,000 per bedroom,
-−1,000 per year of age, −3,000 per km).
+## The idea in one sentence
+Linear Regression finds how much each feature adds to or takes away from the
+price, for example "+$1,500 for every extra m²".
+
+## How the code works, step by step
+
+| Step | What happens |
+|------|--------------|
+| 1 | We make 500 pretend houses with random numbers. Prices follow a hidden rule plus some random "luck". |
+| 2 | `X` = size, bedrooms, age, distance (the inputs). `y` = price (the answer). |
+| 3 | We split: 400 houses to learn from, 100 kept secret for testing. |
+| 4 | `model.fit(...)` is where the learning happens. |
+| 5 | We print what the model learned. Compare it with the hidden rule in Step 1: the numbers are very close! |
+| 6 | We test on the 100 secret houses and measure how wrong the guesses are. |
+| 7 | We guess the price of a brand-new house. |
+| 8 | A chart of real vs predicted prices. Dots close to a straight line mean good guesses. |
+
+## Reading the results
+- **"Off by $21,000 on average"**: a typical guess is about $21k too high or too low.
+- **R2 score of 0.94**: the model explains 94% of why prices differ. 1.0 would be perfect.
 
 ## Run it
 ```bash
 python main.py
 ```
-Output: metrics in the terminal, plus `outputs/actual_vs_predicted.png`.
 
 ## Try it yourself
-1. Change `test_size` to 0.5. Do the metrics get worse?
-2. Increase the noise (`rng.normal(0, 25_000, n)`) to 100,000. What happens to R²?
-3. Remove the `size_m2` column from `X`. How much worse is the model?
-4. Replace `LinearRegression` with `DecisionTreeRegressor` from `sklearn.tree` and compare.
+1. Change `test_size=0.2` to `0.5`. Does the error get bigger?
+2. Make the luck bigger: change `25000` to `100000`. What happens to the R2 score?
+3. Remove `"size"` from `X` (and from `new_house`). How much worse is the model?

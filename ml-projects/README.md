@@ -1,15 +1,18 @@
 # 5 Machine Learning Projects for Beginners
 
-Five small projects, each teaching a different core ML idea. They use only
-scikit-learn's built-in datasets or generated data, so they run offline.
+Five small projects, each teaching one big ML idea. The code is written to be
+as easy to read as possible: it runs from top to bottom, with a comment above
+every step.
 
-| # | Project | ML Type | Algorithm(s) | Key Concepts |
-|---|---------|---------|--------------|--------------|
-| 1 | [House Price Prediction](01-house-price-prediction) | Regression | Linear Regression | train/test split, MAE, RMSE, R² |
-| 2 | [Iris Flower Classification](02-iris-flower-classification) | Classification | KNN, Decision Tree | accuracy, confusion matrix, choosing *k* |
-| 3 | [Spam Message Detector](03-spam-message-detector) | Text Classification | Naive Bayes | bag-of-words, TF-IDF, precision/recall |
-| 4 | [Customer Segmentation](04-customer-segmentation) | Clustering (unsupervised) | K-Means | scaling, elbow method, cluster profiles |
-| 5 | [Handwritten Digit Recognition](05-handwritten-digit-recognition) | Image Classification | Logistic Regression, SVM | pixels as features, model comparison |
+| # | Project | What the computer learns to do |
+|---|---------|--------------------------------|
+| 1 | [House Price Prediction](01-house-price-prediction) | Guess a **number** (a price) |
+| 2 | [Iris Flower Classification](02-iris-flower-classification) | Pick a **category** (a flower type) |
+| 3 | [Spam Message Detector](03-spam-message-detector) | Read **text** and decide: spam or not |
+| 4 | [Customer Segmentation](04-customer-segmentation) | Find **groups** by itself, with no answers given |
+| 5 | [Handwritten Digit Recognition](05-handwritten-digit-recognition) | Read **pictures** of numbers |
+
+Do them in order. Each one builds on the one before.
 
 ## Setup
 
@@ -24,16 +27,33 @@ pip install -r requirements.txt
 python 01-house-price-prediction/main.py
 ```
 
-Each script prints its results to the terminal and saves its charts in an
-`outputs/` folder inside the project.
+Results print in the terminal. Charts open in a window, and the script
+continues once you **close the chart window**.
 
-## Suggested learning order
+## The recipe almost every ML project follows
 
-1. **Project 1**: the basic workflow: load data → split → train → evaluate.
-2. **Project 2**: classification and comparing two models.
-3. **Project 3**: turning text into numbers.
-4. **Project 4**: learning without labels.
-5. **Project 5**: images as data, and putting it all together.
+Every project here follows these same steps. Once you know them, ML code gets
+much easier to read.
 
-Each project's README ends with **"Try it yourself"** exercises. Do them; they
-are where most of the learning happens.
+1. **Get data**: a table of examples.
+2. **Split X and y**: `X` is the information we give the model, and `y` is the answer we want it to predict.
+3. **Split train and test**: the model learns from the *train* part. We keep the *test* part secret so we can check the model afterwards, like exam questions.
+4. **Create a model**: `model = SomeModel()`
+5. **Train it**: `model.fit(X_train, y_train)`
+6. **Test it**: `model.predict(X_test)`, then compare the guesses with the real answers.
+7. **Use it**: predict something brand new.
+
+## Word list
+
+| Word | Meaning |
+|------|---------|
+| **Model** | The "brain" that learns patterns from data |
+| **Feature** | One piece of input information (for example, house size) |
+| **Target / label** | The answer we want to predict (for example, the price) |
+| **Training** | Letting the model learn from examples (`fit`) |
+| **Prediction** | The model's guess (`predict`) |
+| **Accuracy** | The share of guesses that are correct (0.95 = 95%) |
+| **Regression** | Predicting a number |
+| **Classification** | Predicting a category |
+| **Clustering** | Finding groups without being given any answers |
+| **Overfitting** | Memorising the training data instead of learning the real pattern |
